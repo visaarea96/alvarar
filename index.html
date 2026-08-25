@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alvarás - Controle Empresarial</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase Compat -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <!-- Bibliotecas para importação/exportação -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-building-shield"></i>
+                <span>Alvarás</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" data-page="dashboard" class="nav-link active">
+                    <i class="fas fa-chart-pie"></i> Dashboard
+                </a>
+                <a href="#" data-page="empresas" class="nav-link">
+                    <i class="fas fa-building"></i> Empresas
+                </a>
+                <a href="#" data-page="importar" class="nav-link">
+                    <i class="fas fa-file-import"></i> Importar/Exportar
+                </a>
+                <a href="#" data-page="backup" class="nav-link">
+                    <i class="fas fa-database"></i> Backup
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <button id="sidebarToggle" class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 id="pageTitle">Dashboard</h1>
+                <div class="topbar-actions">
+                    <button id="btnAddEmpresa" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nova Empresa
+                    </button>
+                </div>
+            </header>
+
+            <!-- Page: Dashboard -->
+            <section id="page-dashboard" class="page active">
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="card-icon bg-blue"><i class="fas fa-building"></i></div>
+                        <div class="card-info">
+                            <h3 id="totalEmpresas">0</h3>
+                            <p>Total de Empresas</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon bg-green"><i class="fas fa-file-alt"></i></div>
+                        <div class="card-info">
+                            <h3 id="totalAlvaras">0</h3>
+                            <p>Total de Alvarás</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon bg-orange"><i class="fas fa-calendar-alt"></i></div>
+                        <div class="card-info">
+                            <h3 id="totalExercicios">0</h3>
+                            <p>Exercícios Cadastrados</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon bg-red"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div class="card-info">
+                            <h3 id="alvarasProximosVenc">0</h3>
+                            <p>Alvarás Próximos do Vencimento</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Page: Empresas -->
+            <section id="page-empresas" class="page">
+                <!-- Filtros -->
+                <div class="filters-bar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="Buscar por CNPJ, CPF, nome, endereço, alvará...">
+                    </div>
+                    <div class="filter-group">
+                        <select id="filterExercicio" class="filter-select">
+                            <option value="">Todos os exercícios</option>
+                        </select>
+                        <select id="filterUF" class="filter-select">
+                            <option value="">Todas as UFs</option>
+                        </select>
+                        <select id="filterMunicipio" class="filter-select">
+                            <option value="">Todos os municípios</option>
+                        </select>
+                        <button id="btnLimparFiltros" class="btn btn-outline btn-sm">
+                            <i class="fas fa-eraser"></i> Limpar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabela -->
+                <div class="table-container">
+                    <table class="data-table" id="empresasTable">
+                        <thead>
+                            <tr>
+                                <th data-sort="documento">EMPRESA / CPF / CNPJ <i class="fas fa-sort"></i></th>
+                                <th data-sort="nomeFantasia">NOME FANTASIA <i class="fas fa-sort"></i></th>
+                                <th data-sort="endereco">ENDEREÇO <i class="fas fa-sort"></i></th>
+                                <th data-sort="alvara">ALVARÁ <i class="fas fa-sort"></i></th>
+                                <th data-sort="exercicio">EXERCÍCIO <i class="fas fa-sort"></i></th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- Dados inseridos via JS -->
+                        </tbody>
+                    </table>
+                    <div id="emptyState" class="empty-state" style="display: none;">
+                        <i class="fas fa-inbox"></i>
+                        <p>Nenhum registro encontrado</p>
+                    </div>
+                </div>
+
+                <!-- Paginação -->
+                <div class="pagination" id="pagination">
+                    <button id="btnFirstPage" class="btn-page"><i class="fas fa-angle-double-left"></i></button>
+                    <button id="btnPrevPage" class="btn-page"><i class="fas fa-angle-left"></i></button>
+                    <span id="pageInfo">1–30 de 0 registros</span>
+                    <button id="btnNextPage" class="btn-page"><i class="fas fa-angle-right"></i></button>
+                    <button id="btnLastPage" class="btn-page"><i class="fas fa-angle-double-right"></i></button>
+                </div>
+            </section>
+
+            <!-- Page: Importar/Exportar -->
+            <section id="page-importar" class="page">
+                <div class="import-export-container">
+                    <div class="card">
+                        <h3><i class="fas fa-file-import"></i> Importar Dados</h3>
+                        <p>Importe registros a partir de arquivos CSV, Excel ou JSON.</p>
+                        <input type="file" id="importFile" accept=".csv,.xlsx,.xls,.json" class="file-input">
+                        <button id="btnImport" class="btn btn-primary" disabled>
+                            <i class="fas fa-upload"></i> Importar
+                        </button>
+                        <div id="importPreview" class="import-preview"></div>
+                    </div>
+                    <div class="card">
+                        <h3><i class="fas fa-file-export"></i> Exportar Dados</h3>
+                        <p>Exporte os dados atualmente filtrados ou todos os registros.</p>
+                        <div class="export-buttons">
+                            <button id="btnExportCSV" class="btn btn-outline"><i class="fas fa-file-csv"></i> CSV</button>
+                            <button id="btnExportXLSX" class="btn btn-outline"><i class="fas fa-file-excel"></i> Excel</button>
+                            <button id="btnExportJSON" class="btn btn-outline"><i class="fas fa-file-code"></i> JSON</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Page: Backup -->
+            <section id="page-backup" class="page">
+                <div class="backup-container">
+                    <div class="card">
+                        <h3><i class="fas fa-download"></i> Backup Completo</h3>
+                        <p>Baixe um backup de todos os registros em formato JSON.</p>
+                        <button id="btnBackup" class="btn btn-primary"><i class="fas fa-download"></i> Baixar Backup</button>
+                    </div>
+                    <div class="card">
+                        <h3><i class="fas fa-upload"></i> Restaurar Backup</h3>
+                        <p>Restaure um backup anterior. Os dados atuais serão substituídos após confirmação.</p>
+                        <input type="file" id="restoreFile" accept=".json" class="file-input">
+                        <button id="btnRestore" class="btn btn-danger" disabled><i class="fas fa-undo"></i> Restaurar</button>
+                        <div id="restoreInfo" class="restore-info"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Modal de Empresa -->
+    <div id="empresaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Nova Empresa</h2>
+                <button class="modal-close" id="btnCloseModal">&times;</button>
+            </div>
+            <form id="empresaForm" class="modal-form">
+                <input type="hidden" id="empresaId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tipo de Documento</label>
+                        <select id="tipoDocumento" required>
+                            <option value="cnpj">CNPJ</option>
+                            <option value="cpf">CPF</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>CNPJ / CPF</label>
+                        <input type="text" id="documento" required maxlength="18">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Razão Social / Nome</label>
+                        <input type="text" id="razaoSocial" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nome Fantasia</label>
+                        <input type="text" id="nomeFantasia">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>CEP</label>
+                        <input type="text" id="cep" maxlength="9">
+                    </div>
+                    <div class="form-group">
+                        <label>Endereço</label>
+                        <input type="text" id="endereco">
+                    </div>
+                    <div class="form-group">
+                        <label>Número</label>
+                        <input type="text" id="numero">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Bairro</label>
+                        <input type="text" id="bairro">
+                    </div>
+                    <div class="form-group">
+                        <label>Município</label>
+                        <input type="text" id="municipio">
+                    </div>
+                    <div class="form-group">
+                        <label>UF</label>
+                        <input type="text" id="uf" maxlength="2">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="text" id="telefone" maxlength="15">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Número do Alvará</label>
+                        <input type="text" id="alvara" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Exercício</label>
+                        <input type="text" id="exercicio" required maxlength="4">
+                    </div>
+                    <div class="form-group">
+                        <label>Validade</label>
+                        <input type="date" id="validade">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" id="btnCancelModal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveEmpresa">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3>Confirmar Exclusão</h3>
+                <button class="modal-close" id="btnCloseConfirm">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir este registro?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="btnCancelConfirm">Cancelar</button>
+                <button class="btn btn-danger" id="btnConfirmDelete">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Script principal -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
